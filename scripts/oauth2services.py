@@ -359,7 +359,7 @@ class OAuthServices:
             msg.add_header('Content-Disposition', 'attachment', filename=filename)
             message.attach(msg)
 
-        return {'raw': base64.urlsafe_b64encode(message.as_string())}
+        return {'raw': base64.urlsafe_b64encode(message.as_string().encode('utf-8')).decode('utf-8')}
 
 def test():
     """ test email and uploading """
