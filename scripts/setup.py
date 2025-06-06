@@ -838,7 +838,7 @@ def console_assistant():
                     print('[ ] ['+str(index)+'] '+printer)
                 index = index + 1
             config.selected_printer = input("Seleted printer: [%s] confirm or change =>" % config.selected_printer)
-            if config.selected_printer is "": config.selected_printer = selectedindex
+            if config.selected_printer == "": config.selected_printer = selectedindex
 
     want_email  = config.enable_email
     want_upload = config.enable_upload
