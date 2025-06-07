@@ -237,6 +237,9 @@ class OAuthServices:
                     filecontent=image_file.read()
             log.debug("upload_picture: uploading picture %s (%d bytes)"%(filename,len(filecontent)))
             (response,token) = http.request(url,method="POST",body=filecontent,headers=headers)
+            # Ensure token is a string, not bytes
+            if isinstance(token, bytes):
+                token = token.decode('utf-8')
             if response.status != 200:
                 log.warning("upload_picture: response code for upload %d != 200"%response.status)
                 raise IOError("Error connecting to %s"%url)
@@ -262,11 +265,17 @@ class OAuthServices:
                         log.warning("upload_picture: retrying to reference uploaded image without an album")
                         #Album is invalid, try to upload to user stream instead
                         res = client.mediaItems().batchCreate(body=dict(newMediaItems=[{"simpleMediaItem": {"uploadToken": token}}])).execute()
-                if res["newMediaItemResults"][0]["status"]["message"] == "OK":
-                    log.info("upload_picture: successfully uploaded image %s"%filename)
-                    return True
+                if res["newMediaItemResults"]:
+                    status = res["newMediaItemResults"][0]["status"]
+                    # Accept both message=="OK" and code==0 as success
+                    if status.get("message") == "OK" or status.get("message") == "Success" or status.get("code") == 0:
+                        log.info("upload_picture: successfully uploaded image %s" % filename)
+                        return True
+                    else:
+                        log.warning("upload_picture: Unrecognized response: %s", status)
+                        return False
                 else:
-                    log.warning("upload_picture: Unrecognized response")
+                    log.warning("upload_picture: No newMediaItemResults in response: %s", res)
                     return False
 
             except Exception as e:

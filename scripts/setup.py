@@ -62,6 +62,7 @@ class Assistant(Tk):
             self.b_prev.pack(side=LEFT,padx=40)
             self.b_next.pack(side=RIGHT,padx=40)
             self.widgets=[]
+            self.page_titles=[]
 
             #variables
             #PAGE 0 email/upload
@@ -69,20 +70,19 @@ class Assistant(Tk):
             self.want_email_var.set(config.enable_email == True)
             def on_want_email_change(*args):
                 self.config.enable_email = self.want_email_var.get() != 0
-            self.want_email_var.trace("w",on_want_email_change)
+            self.want_email_var.trace_add("write",on_want_email_change)
 
             self.want_upload_var = IntVar()
             self.want_upload_var.set(config.enable_upload == True)
             def on_want_upload_change(*args):
                 self.config.enable_upload = self.want_upload_var.get() != 0
-            self.want_upload_var.trace("w",on_want_upload_change)
+            self.want_upload_var.trace_add("write",on_want_upload_change)
 
             self.want_effects_var = IntVar()
             self.want_effects_var.set(config.enable_effects == True)
             def on_want_effects_change(*args):
                 self.config.enable_effects = self.want_effects_var.get() != 0
-            self.want_effects_var.trace("w",on_want_effects_change)
-
+            self.want_effects_var.trace_add("write",on_want_effects_change)
             if self.printer_selection_enable == True:
                 self.want_print_var = IntVar()
                 self.want_print_var.set(config.enable_print == True)
@@ -116,19 +116,13 @@ class Assistant(Tk):
 
 
 
-
-
-
-            if printer_selection_enable == True:self.want_print_var.trace("w",on_want_print_change)
-
+            if printer_selection_enable == True:self.want_print_var.trace_add("write",on_want_print_change)
             self.want_email_cb  = Checkbutton(self.main_frame, text="Enable Email sending", variable=self.want_email_var, anchor=W, font='Helvetica')
             self.want_upload_cb  = Checkbutton(self.main_frame, text="Enable photo upload", variable=self.want_upload_var, anchor=W, font='Helvetica')
             self.want_effects_cb  = Checkbutton(self.main_frame, text="Enable image effects", variable=self.want_effects_var, anchor=W, font='Helvetica')
-
             if printer_selection_enable == True:
                 self.want_print_cb = Checkbutton(self.main_frame, text="Enable photo print", variable=self.want_print_var, anchor=W, font='Helvetica')
                 self.want_printer_val = int()
-
             #self.want_printer_val.set(config.selected_printer)
             def on_use_printer(evt):
                 printer_selected = evt.widget
@@ -139,26 +133,29 @@ class Assistant(Tk):
 
 
             #checkbutton to choose to use soft keyboard
-
             self.use_soft_keyboard_var = IntVar()
             def on_use_soft_keyboard(*args):
                 self.USE_SOFT_KEYBOARD = self.use_soft_keyboard_var.get() != 0
-            self.use_soft_keyboard_var.trace("w",on_use_soft_keyboard)
+            self.use_soft_keyboard_var.trace_add("write",on_use_soft_keyboard)
             self.use_soft_keyboard_var.set(0)
 
             self.use_soft_keyboard_cb = Checkbutton(self.main_frame, text="Enable software keyboard (for this configuration)", variable=self.use_soft_keyboard_var, anchor=W, font='Helvetica')
+
+            self.page_titles.append("TouchSelfie - Options")
             if self.printer_selection_enable == True:
                 self.widgets.append([self.want_email_cb, self.want_upload_cb, self.want_effects_cb,self.want_print_cb,self.use_soft_keyboard_cb])
             else:
                 self.widgets.append([self.want_email_cb, self.want_upload_cb,self.want_effects_cb,self.use_soft_keyboard_cb])
 
-            #PAGE 1 google credentials
+
+
+            # PAGE 1 google credentials
             self.user_mail_label = Label(self.main_frame,text="Google Account", font='Helvetica', anchor=W)
             self.user_mail_var  = StringVar()
             def on_mail_change(*args):
                 self.config.user_name = self.user_mail_var.get()
 
-            self.user_mail_var.trace("w",on_mail_change)
+            self.user_mail_var.trace_add("write",on_mail_change)
             self.user_mail_var.set(config.user_name)
             self.user_mail_entry =  Entry(self.main_frame, font='Helvetica', textvariable = self.user_mail_var)
             self.__install_soft_keyboard(self.user_mail_entry, self.user_mail_var)
@@ -168,13 +165,12 @@ class Assistant(Tk):
             self.valid_icon = _ImageTk.PhotoImage(valid_icon)
             invalid_icon = _Image.open(INVALID_ICON_FILE)
             self.invalid_icon = _ImageTk.PhotoImage(invalid_icon)
-
             self.credentials_frame = LabelFrame(self.main_frame, text="Credentials", font='Helvetica')
             self.__check_credentials_files()
 
             self.refresh_cred_button = Button(self.main_frame, text="Refresh", font='Helvetica', fg=self.BUTTONS_BG, command=self.__check_credentials_files)
 
-
+            self.page_titles.append("TouchSelfie - Credentials")
             self.widgets.append([
                 self.user_mail_label,
                 self.user_mail_entry,
@@ -183,36 +179,65 @@ class Assistant(Tk):
 
             #PAGE 2 Email infos
 
+            # Handle reading/writing to the config object
+
+            # Test email address
+            self.email_to_var = StringVar()
+
+            if config.test_email_address is None:
+                # If no test email address is set, use the user email as default
+                config.test_email_address = config.user_name
+
+            self.email_to_var.set(config.test_email_address)
+            def on_mail_to_change(*args):
+                self.config.test_email_address = self.email_to_var.get()
+            self.email_to_var.trace_add("write",on_mail_to_change)
+
+            # Email Subject
             self.email_title_var = StringVar()
             self.email_title_var.set(config.emailSubject)
             def on_mail_title_change(*args):
                 self.config.emailSubject = self.email_title_var.get()
-            self.email_title_var.trace("w",on_mail_title_change)
+            self.email_title_var.trace_add("write",on_mail_title_change)
 
+            # Email Body
             self.email_body_var = StringVar()
             self.email_body_var.set(config.emailMsg)
             def on_mail_body_change(*args):
                 self.config.emailMsg = self.email_body_var.get()
-            self.email_body_var.trace("w",on_mail_body_change)
+            self.email_body_var.trace_add("write",on_mail_body_change)
 
-            self.email_title_label = Label(self.main_frame,text="Email subject:", font='Helvetica', anchor=W)
-            self.email_title_entry = Entry(self.main_frame, textvariable=self.email_title_var, font='Helvetica', width = 40)
+            # Create the widgets for the email configuration page
+            #Test email address
+            self.to_frame = Frame(self.main_frame, bg = "white")
+            self.email_to_label = Label(self.to_frame,text="To:", font='Helvetica', anchor=W, height=1, bg='white')
+            self.email_to_label.pack(side=LEFT, padx=0, pady=0)
+            self.email_to_entry = Entry(self.to_frame, textvariable=self.email_to_var, font='Helvetica', width = 40)
+            self.email_to_entry.pack(side=LEFT, expand=True, fill=X, padx=5, pady=5)
+            self.__install_soft_keyboard(self.email_to_entry, self.email_to_var)
+
+            # Email subject
+            self.subject_frame = Frame(self.main_frame, bg = "white")
+            self.email_title_label = Label(self.subject_frame,text="Email subject:", font='Helvetica', anchor=W, height=1, bg='white')
+            self.email_title_label.pack(side=LEFT, padx=0, pady=0)
+            self.email_title_entry = Entry(self.subject_frame, textvariable=self.email_title_var, font='Helvetica', width = 40)
+            self.email_title_entry.pack(side=LEFT, expand=True, fill=X, padx=5, pady=5)
             self.__install_soft_keyboard(self.email_title_entry, self.email_title_var)
 
-            self.email_body_label = Label(self.main_frame,text="Email body:", font='Helvetica', anchor=W)
-            #self.email_body_entry = Entry(self.main_frame, textvariable=self.email_body_var, width = 40)
+            # Email body
+            self.email_body_label = Label(self.main_frame,text="Email body:", font='Helvetica', anchor=W, height=1)
             self.email_body_entry =  Text(self.main_frame, font='Helvetica', height=5)
             self.email_body_entry.insert(INSERT,self.email_body_var.get())
             self.__install_soft_keyboard(self.email_body_entry,self.email_body_var)
 
+            # Email logging
             self.email_logging_var = IntVar()
             if self.config.enable_email_logging: self.email_logging_var.set(1)
             else : self.email_logging_var.set(0)
             def on_email_logging_change(*args):
                 self.config.enable_email_logging = self.email_logging_var.get() != 0
-            self.email_logging_var.trace("w",on_email_logging_change)
+            self.email_logging_var.trace_add("write",on_email_logging_change)
             self.email_logging_cb = Checkbutton(self.main_frame, text="Log email addresses?", variable=self.email_logging_var, anchor=W, font='Helvetica')
-
 
             def test_email():
                 self.__mail_body_update_content()
@@ -220,9 +245,10 @@ class Assistant(Tk):
 
             self.test_email_button = Button(self.main_frame,text="Send test email", font='Helvetica', command=test_email)
 
+            self.page_titles.append("TouchSelfie - Email Options")
             self.widgets.append([
-                self.email_title_label,
-                self.email_title_entry,
+                self.to_frame,
+                self.subject_frame,
                 self.email_body_label,
                 self.email_body_entry,
                 self.email_logging_cb,
@@ -235,7 +261,7 @@ class Assistant(Tk):
             self.album_name_var = StringVar()
             def on_album_name_change(*args):
                 self.config.album_name = self.album_name_var.get()
-            self.album_name_var.trace("w",on_album_name_change)
+            self.album_name_var.trace_add("write",on_album_name_change)
             self.album_name_var.set(config.album_name) #TODO restore this eventually
             #self.album_name_var.set("Photo Stream")
 
@@ -249,7 +275,7 @@ class Assistant(Tk):
                     #print("ERROR it's currently impossible to send photos to a specific album")
                     self.config.albumID = self.album_id_var.get()
                     #self.config.albumID = None # TODO: find a way to upload in a specific album
-            self.album_id_var.trace("w",on_albumID_change)
+            self.album_id_var.trace_add("write",on_albumID_change)
             
             self.album_id_var.set(config.albumID) #TODO: restore this eventually
             #self.album_id_var.set(None) # No Album
@@ -324,11 +350,11 @@ class Assistant(Tk):
                     print(f"[DEBUG] Listbox items: {album_listbox.size()}, displayed_list_names: {displayed_list_names}, displayed_list_ids: {displayed_list_ids}")
 
                 populate_list()
-                pattern_var.trace("w", populate_list)
-                item_selected_ran = {'done': False}
+                pattern_var.trace_add("write", populate_list)
 
                 def on_listbox_select(event):
-                    # Debug: print current selection
+                    print(event)
+                    print(album_listbox)
                     cursel = album_listbox.curselection()
                     if cursel:
                         idx = int(cursel[0])
@@ -338,11 +364,7 @@ class Assistant(Tk):
 
                 album_listbox.bind("<<ListboxSelect>>", on_listbox_select)
 
-                def item_selected(event):
-                    print("Here we are 4 Item selected (double-click or Enter)")
-                    print("curselection:", album_listbox.curselection(), "size:", album_listbox.size())
-                    if item_selected_ran['done']:
-                        return
+                def confirm_selection():
                     cursel = album_listbox.curselection()
                     if not cursel:
                         print("No selection")
@@ -351,9 +373,6 @@ class Assistant(Tk):
                     if idx < 0 or idx >= len(displayed_list_names):
                         print(f"Index out of range: {idx} (displayed_list_names length: {len(displayed_list_names)})")
                         return
-                    item_selected_ran['done'] = True
-                    album_listbox.unbind("<Double-Button-1>")
-                    album_listbox.unbind("<Return>")
                     print("Here we are 2 Selected item")
                     print(f"selected album '{displayed_list_names[idx]}' with id '{displayed_list_ids[idx]}'")
                     if displayed_list_names[idx] == "<Create New>":
@@ -368,10 +387,20 @@ class Assistant(Tk):
                         self.album_name_var.set(displayed_list_names[idx])
                     top.destroy()
 
-                album_listbox.bind("<Double-Button-1>", item_selected)
-                album_listbox.bind("<Return>", item_selected)
-                album_listbox.config(state=NORMAL)
-                album_listbox.focus_set()
+                def item_selected(event):
+                    print(event)
+                    print("Here we are 4 Item selected (double-click or Enter)")
+                    confirm_selection()
+
+                # album_listbox.bind("<Double-Button-1>", item_selected)
+                # album_listbox.bind("<Return>", item_selected)
+                album_listbox.bind("<Double-Button-1>", lambda event: item_selected)
+                album_listbox.bind("<Return>", lambda event: item_selected)
+
+                select_btn = Button(top, text="Select", font='Helvetica', command=confirm_selection)
+                select_btn.pack(fill=X, pady=5)
+                select_btn.bind("<Return>", lambda event: confirm_selection())  # Bind Enter key to select button
+
                 print("Here we are 3 Listbox bound and focused")
                 self.wait_window(top)
                 self.album_select_button.config(state=NORMAL)
@@ -396,6 +425,7 @@ class Assistant(Tk):
             self.upload_test_button.pack(side=RIGHT)
 
 
+            self.page_titles.append("TouchSelfie - Photo Album")
             #self.widgets.append([self.album_name_label,self.current_album_label,self.album_name_entry,self.album_id_label, self.album_id_entry,self.album_bframe])
             self.widgets.append([self.album_name_label,self.album_name_entry,self.album_bframe])
 
@@ -406,7 +436,7 @@ class Assistant(Tk):
 
             def on_archive_change(*args):
                 self.config.ARCHIVE = self.archive_var.get() != 0
-            self.archive_var.trace("w",on_archive_change)
+            self.archive_var.trace_add("write",on_archive_change)
 
 
             self.archive_dir_label = Label(self.main_frame,text="Local directory for archive:", font='Helvetica', anchor=W)
@@ -414,7 +444,7 @@ class Assistant(Tk):
             self.archive_dir_var.set(config.archive_dir)
             def on_archive_dir_change(*args):
                 self.config.archive_dir = self.archive_dir_var.get()
-            self.archive_dir_var.trace("w",on_archive_dir_change)
+            self.archive_dir_var.trace_add("write",on_archive_dir_change)
 
             self.archive_dir_entry = Entry(self.main_frame, textvariable=self.archive_dir_var, width = 40, font='Helvetica')
             self.__install_soft_keyboard(self.archive_dir_entry,self.archive_dir_var)
@@ -436,6 +466,7 @@ class Assistant(Tk):
 
             self.archive_cb = Checkbutton(self.main_frame,text="Archive snapshots locally", variable = self.archive_var, command=enable_archive_dir, font='Helvetica', anchor=W)
             enable_archive_dir()
+            self.page_titles.append("TouchSelfie - Snapshots")
             self.widgets.append([
                 self.archive_cb,
                 self.archive_dir_label,
@@ -535,8 +566,8 @@ class Assistant(Tk):
 
         def launch_browser():
             import webbrowser
+
             # Try Chromium first, fallback to default
-            print("A")
             try:
                 webbrowser.get('chromium-browser').open(GET_APP_ID_WIZARD_URL)
             except webbrowser.Error as e:
@@ -609,7 +640,6 @@ Click the Start button below:
                 import webbrowser
 
                 # Try Chromium first, fallback to default
-                print("B")
                 try:
                     webbrowser.get('chromium-browser').open(URI)
                 except webbrowser.Error as e:
@@ -786,6 +816,9 @@ Click the Start button below:
             w.pack(fill=X,padx=20, pady=10)
             self.packed_widgets.append(w)
 
+        if self.page < len(self.page_titles):
+            self.title(self.page_titles[self.page])
+
     def __save_and_exit(self):
         print("bye!")
         #finally create a personalized script to run the photobooth
@@ -807,13 +840,14 @@ Click the Start button below:
 
     def __test_connection(self,test_email,test_upload):
         """Tests email sending and/or image uploading"""
+        import tkinter.messagebox
         if (not test_email) and (not test_upload):
             return
-        username = self.user_mail_var.get()
+        username = self.email_to_var.get()
         if self.google_service is None:
             print("Unable to test service: no connection")
+            tkinter.messagebox.showerror("Test Failed", "Unable to test service: no connection")
             return False
-
         # creating test image (a 32x32 image with random color)
         from PIL import Image
         from random import randint
@@ -822,27 +856,36 @@ Click the Start button below:
         b=randint(0,255)
         im = Image.new("RGB", (32, 32), (r,g,b))
         im.save("test_image.png")
-        if test_email:
-            print("\nSending a test message to %s"%username)
-            self.google_service.send_message(username,self.config.emailSubject,self.config.emailMsg,attachment_file="test_image.png")
-        if test_upload:
-            print("\nTesting picture upload in %s's album with id %s:"%(username,self.config.albumID))
-
-            self.google_service.upload_picture("test_image.png", album_id = self.config.albumID)
-
-
-
+        try:
+            if test_email:
+                print(f"\nSending a test message to {username}")
+                self.google_service.send_message(username,self.config.emailSubject,self.config.emailMsg,attachment_file="test_image.png")
+                tkinter.messagebox.showinfo("Test Email", f"Test email sent successfully to {username}.")
+            if test_upload:
+                print(f"\n 1 Testing picture upload in {username}'s album with id {self.config.albumID}:")
+                self.google_service.upload_picture("test_image.png", album_id = self.config.albumID)
+                tkinter.messagebox.showinfo("Test Upload", "Test image uploaded successfully.")
+        except Exception as e:
+            print(e)
+            tkinter.messagebox.showerror("Test Failed", f"Test failed: {e}")
+            return False
+        return True
 def graphical_assistant():
     """Launches graphical interface"""
     try:
         config = configuration.Configuration('configuration.json')
+        print("Configuration")
+        print(config)
         root = Assistant(config)
+        print("Root")
+        print(root)
         try:
             root.geometry("450x400")
             root.mainloop()
         except:
             pass
-    except:
+    except Exception as e:
+        print(e)
         raise Exception("Graphical interface error")
 
 
@@ -971,7 +1014,6 @@ def console_assistant():
     _________________________________________________________________""")
             input("Press a key when ready...")
             # Try Chromium first, fallback to default
-            print("C")
             try:
                 webbrowser.get('chromium-browser').open(authorization_uri)
             except webbrowser.Error as e:
@@ -1130,7 +1172,7 @@ def test_connection(service,config,test_email,test_upload):
         print("\nSending a test message to %s"%username)
         service.send_message(username,"oauth2 message sending works!","Here's the Message body",attachment_file="test_image.png")
     if test_upload:
-        print("\nTesting picture upload in %s's album"%username)
+        print("\n2 Testing picture upload in %s's album"%username)
         service.upload_picture("test_image.png", album_id = config.albumID)
 
 

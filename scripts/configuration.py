@@ -25,6 +25,7 @@ class Configuration():
     selected_printer = None #No printer select
     enable_hardware_buttons = False #Enable hardware buttons
     enable_email_logging = False # Should we log outgoing emails?
+    test_email_address = None # Email address to use for testing purposes
 
     #init
     def __init__(self,configuration_file_name):
@@ -76,7 +77,9 @@ class Configuration():
         if "selected_printer" in list(config.keys()): self.selected_printer = config["selected_printer"]
         if "enable_hardware_buttons" in list(config.keys()):  self.enable_hardware_buttons = config["enable_hardware_buttons"]
         if "enable_email_logging" in list(config.keys()): self.enable_email_logging = config["enable_email_logging"]
-
+        if "test_email_address" in list(config.keys()): self.test_email_address = config["test_email_address"]
+        else:
+            self.test_email_address = self.user_name
 
         return self.is_valid
 
@@ -103,7 +106,8 @@ class Configuration():
             "enable_effects": self.enable_effects,
             "selected_printer": self.selected_printer,
             "enable_hardware_buttons": self.enable_hardware_buttons,
-            "enable_email_logging" : self.enable_email_logging
+            "enable_email_logging" : self.enable_email_logging,
+            "test_email_address": self.test_email_address
         }
         try:
             with open(self.config_file,'w') as config:
