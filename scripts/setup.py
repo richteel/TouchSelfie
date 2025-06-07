@@ -288,63 +288,95 @@ class Assistant(Tk):
                 pattern_entry.pack(fill=X)
 
                 list_box_items = 15
-                album_listbox = Listbox(top,height=list_box_items, font='Helvetica', selectmode=SINGLE)
+                album_listbox = Listbox(top, height=list_box_items, font='Helvetica', selectmode=SINGLE, state=NORMAL)
                 album_listbox.pack(fill=X)
+                album_listbox.focus_set()  # Ensure listbox has focus
 
-                displayed_list_ids=["idstart"]
-                displayed_list_names=["namestart"]
+                # Make the popup modal
+                top.grab_set()
+
+                # Disable the Select button while popup is open
+                self.album_select_button.config(state=DISABLED)
+
+                # --- Album selection popup logic fix ---
+                # Use nonlocal for displayed_list_ids/names so inner functions can update them
+                displayed_list_ids = []
+                displayed_list_names = []
                 def populate_list(*args):
-                    global displayed_list_ids, displayed_list_names
+                    nonlocal displayed_list_ids, displayed_list_names
                     pattern = pattern_var.get()
-                    #print "applying pattern %s"%pattern
-                    #clear
-                    displayed_list_ids = ["","<New>"]
-                    displayed_list_names=["<No Album>","<Create New>"]
-                    album_listbox.delete(0,END)
-                    album_listbox.insert(END,"<No Album>")
-                    album_listbox.insert(END,"<Create New>")
+                    displayed_list_ids = ["", "<New>"]
+                    displayed_list_names = ["<No Album>", "<Create New>"]
+                    album_listbox.delete(0, END)
+                    album_listbox.insert(END, "<No Album>")
+                    album_listbox.insert(END, "<Create New>")
                     inserted_items = 0
                     for i, item in enumerate(album_list):
-                        if inserted_items >= list_box_items-1:
-                            break;
+                        if inserted_items >= list_box_items - 2:
+                            break
                         title = item['title']
-                        title_ = title.lower()
-                        id    = item['id']
-                        if title_.find(pattern.lower()) != -1:
-                            album_listbox.insert(END,item['title'])
+                        id = item['id']
+                        if pattern.lower() in title.lower():
+                            album_listbox.insert(END, title)
                             displayed_list_ids.append(id)
                             displayed_list_names.append(title)
                             inserted_items += 1
-
+                    print(f"[DEBUG] Listbox items: {album_listbox.size()}, displayed_list_names: {displayed_list_names}, displayed_list_ids: {displayed_list_ids}")
 
                 populate_list()
-                pattern_var.trace("w",populate_list)
-                def item_selected(*args):
-                    global displayed_list_ids, displayed_list_names
-                    #print "selected!"
+                pattern_var.trace("w", populate_list)
+                item_selected_ran = {'done': False}
+
+                def on_listbox_select(event):
+                    # Debug: print current selection
                     cursel = album_listbox.curselection()
-                    cursel = int(cursel[0])
-                    #print cursel
-                    #print displayed_list_ids
-                    #print displayed_list_names
-                    print("selected album '%s' with id '%s'"%(displayed_list_names[cursel],displayed_list_ids[cursel]))
-                    if displayed_list_names[cursel] == "<Create New>":
+                    if cursel:
+                        idx = int(cursel[0])
+                        print(f"[DEBUG] Listbox selected index: {idx}, name: {displayed_list_names[idx]}")
+                    else:
+                        print("[DEBUG] Listbox selection cleared")
+
+                album_listbox.bind("<<ListboxSelect>>", on_listbox_select)
+
+                def item_selected(event):
+                    print("Here we are 4 Item selected (double-click or Enter)")
+                    print("curselection:", album_listbox.curselection(), "size:", album_listbox.size())
+                    if item_selected_ran['done']:
+                        return
+                    cursel = album_listbox.curselection()
+                    if not cursel:
+                        print("No selection")
+                        return
+                    idx = int(cursel[0])
+                    if idx < 0 or idx >= len(displayed_list_names):
+                        print(f"Index out of range: {idx} (displayed_list_names length: {len(displayed_list_names)})")
+                        return
+                    item_selected_ran['done'] = True
+                    album_listbox.unbind("<Double-Button-1>")
+                    album_listbox.unbind("<Return>")
+                    print("Here we are 2 Selected item")
+                    print(f"selected album '{displayed_list_names[idx]}' with id '{displayed_list_ids[idx]}'")
+                    if displayed_list_names[idx] == "<Create New>":
                         try:
-                            #No album found, create one
-                            album_id = self.google_service.create_album(album_name = "TouchSelfie", add_placeholder_picture = True)
-                            self.album_id_var.set(album_id)   
+                            album_id = self.google_service.create_album(album_name="TouchSelfie", add_placeholder_picture=True)
+                            self.album_id_var.set(album_id)
                             self.album_name_var.set("TouchSelfie")
                         except Exception as e:
                             print(e)
                     else:
-                        self.album_id_var.set(displayed_list_ids[cursel])
-                        self.album_name_var.set(displayed_list_names[cursel])
+                        self.album_id_var.set(displayed_list_ids[idx])
+                        self.album_name_var.set(displayed_list_names[idx])
                     top.destroy()
 
-                album_listbox.bind("<Double-Button-1>",item_selected)
+                album_listbox.bind("<Double-Button-1>", item_selected)
+                album_listbox.bind("<Return>", item_selected)
+                album_listbox.config(state=NORMAL)
+                album_listbox.focus_set()
+                print("Here we are 3 Listbox bound and focused")
                 self.wait_window(top)
-
-
+                self.album_select_button.config(state=NORMAL)
+                # --- End album selection popup logic fix ---
+            
 
 
             #Select Album and test buttons
@@ -508,7 +540,7 @@ class Assistant(Tk):
             try:
                 webbrowser.get('chromium-browser').open(GET_APP_ID_WIZARD_URL)
             except webbrowser.Error as e:
-                log.error("get_users_album: Error while processing request: %s"%str(e))
+                logging.error("get_users_album: Error while processing request: %s" % str(e))
                 webbrowser.open(GET_APP_ID_WIZARD_URL)
             
 
@@ -581,7 +613,7 @@ Click the Start button below:
                 try:
                     webbrowser.get('chromium-browser').open(URI)
                 except webbrowser.Error as e:
-                    log.error("get_users_album: Error while processing request: %s"%str(e))
+                    logging.error("get_users_album: Error while processing request: %s" % str(e))
                     webbrowser.open(URI)
 
             qb.config(command=authenticate)
@@ -943,7 +975,7 @@ def console_assistant():
             try:
                 webbrowser.get('chromium-browser').open(authorization_uri)
             except webbrowser.Error as e:
-                log.error("get_users_album: Error while processing request: %s"%str(e))
+                logging.error("get_users_album: Error while processing request: %s" % str(e))
                 webbrowser.open(authorization_uri)
             mycode = input('\n[validation code]: ').strip()
             return mycode
