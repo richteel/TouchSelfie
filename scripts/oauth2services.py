@@ -107,7 +107,8 @@ class OAuthServices:
         if not self.enable_upload: #we don't want it
             return None
         credentials = self.__oauth_login()
-        return build('photoslibrary', 'v1', http=credentials.authorize(Http()), cache_discovery=False)
+        DISCOVERY_URL = "https://photoslibrary.googleapis.com/$discovery/rest?version=v1"
+        return build('photoslibrary', 'v1', http=credentials.authorize(Http()), discoveryServiceUrl=DISCOVERY_URL)
         
     def create_album(self, album_name = "New Album", add_placeholder_picture = False):
         """ Create a new album in user's photo library
@@ -147,13 +148,17 @@ class OAuthServices:
         try:
             log.debug("get_user_albums: Fetching first page of results")
             request = client.albums().list(pageSize=50,excludeNonAppCreatedData=exclude_non_app_created_data).execute()
-            log.debug("get_user_albums: => %d albums found",len(request["albums"]))
-            albums.extend(request["albums"])
+            log.debug("get_user_albums: => %d albums found", len(request.get("albums", [])))
+            log.debug("get_user_albums: API response: %s", request)  # <-- Add this line
+            albums.extend(request.get("albums", []))
+            print("get_user_albums: => %d albums found (list)", len(albums))
             while (request.get("nextPageToken",None) is not None) and (len(request.get("albums",[])) == 50):
                 log.debug("get_user_albums: Fetching next page of results")
                 request = client.albums().list(pageSize=50, pageToken = request["nextPageToken"],excludeNonAppCreatedData=exclude_non_app_created_data).execute()
-                log.debug("get_user_albums: => %d albums found",len(request["albums"]))
-                albums.extend(request["albums"])
+                log.debug("get_user_albums: => %d albums found", len(request.get("albums", [])))
+                log.debug("get_user_albums: API response: %s", request)  # <-- Add this line
+                albums.extend(request.get("albums", []))
+                print("get_user_albums: => %d albums found (list)", len(albums))
         except KeyError:
             #no albums
             log.error("get_users_album: Error while processing request")

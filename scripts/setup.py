@@ -8,6 +8,11 @@
         - creating the configuration.json file
         - creating the startup script photobooth.sh
 """
+import os
+os.environ["BROWSER"] = "chromium-browser"
+import webbrowser
+webbrowser.register('chromium', None, webbrowser.BackgroundBrowser('/usr/bin/chromium-browser'))
+
 import os.path
 import sys
 import configuration
@@ -496,10 +501,16 @@ class Assistant(Tk):
         text_frame=Frame(top, bg='white')
         text_frame.pack(side=TOP,fill=X)
 
-
         def launch_browser():
             import webbrowser
-            webbrowser.open(GET_APP_ID_WIZARD_URL)
+            # Try Chromium first, fallback to default
+            print("A")
+            try:
+                webbrowser.get('chromium-browser').open(GET_APP_ID_WIZARD_URL)
+            except webbrowser.Error as e:
+                log.error("get_users_album: Error while processing request: %s"%str(e))
+                webbrowser.open(GET_APP_ID_WIZARD_URL)
+            
 
         button_frame = Frame(top,bg='white')
         button_frame.pack(side=BOTTOM, fill=X)
@@ -564,7 +575,14 @@ Click the Start button below:
                 button_frame.pack_forget()
                 code_frame.pack(fill=X, padx=10, pady=10)
                 import webbrowser
-                webbrowser.open(URI)
+
+                # Try Chromium first, fallback to default
+                print("B")
+                try:
+                    webbrowser.get('chromium-browser').open(URI)
+                except webbrowser.Error as e:
+                    log.error("get_users_album: Error while processing request: %s"%str(e))
+                    webbrowser.open(URI)
 
             qb.config(command=authenticate)
 
@@ -920,7 +938,13 @@ def console_assistant():
     paste below
     _________________________________________________________________""")
             input("Press a key when ready...")
-            webbrowser.open(authorization_uri)
+            # Try Chromium first, fallback to default
+            print("C")
+            try:
+                webbrowser.get('chromium-browser').open(authorization_uri)
+            except webbrowser.Error as e:
+                log.error("get_users_album: Error while processing request: %s"%str(e))
+                webbrowser.open(authorization_uri)
             mycode = input('\n[validation code]: ').strip()
             return mycode
 
@@ -1080,6 +1104,22 @@ def test_connection(service,config,test_email,test_upload):
 
 
 if __name__ == '__main__':
+    import logging
+
+    logging.basicConfig (
+                         level=logging.DEBUG,  # Show all messages (DEBUG and above)
+                         format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+                         filename='touchselfie.log',  # Log to this file
+                         filemode='w'                 # Overwrite the log file each run
+                         # filemode='a'  # Use append mode so logs are not overwritten
+                          )
+    
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--console", help="console mode, no graphical interface", action="store_true")
