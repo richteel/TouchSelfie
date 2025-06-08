@@ -62,17 +62,31 @@ except ImportError:
     import fakehardware as HWB
 
 try:
-    import picamera as mycamera
-    from picamera.color import Color
+    from picamera2 import Picamera2
+    mycamera = Picamera2
+    class Color:
+        # Dummy Color class for compatibility
+        def __init__(self, color):
+            self.color = color
+    CAMERA_TYPE = 'picamera2'
 except ImportError:
-    log.warning("picamera not found, trying cv2_camera")
     try:
-        import cv2_camera as mycamera
-        from fakehardware import Color
+        import picamera as mycamera
+        from picamera.color import Color
+        CAMERA_TYPE = 'picamera'
     except ImportError:
-        log.warning("cv2_camera import failed : using fake hardware instead")
-        import fakehardware as mycamera
-        from fakehardware import Color
+        log.warning("picamera not found, trying cv2_camera")
+        print("picamera not found, trying cv2_camera")
+        try:
+            import cv2_camera as mycamera
+            from fakehardware import Color
+            CAMERA_TYPE = 'cv2_camera'
+        except ImportError:
+            log.warning("cv2_camera import failed : using fake hardware instead")
+            print("cv2_camera import failed : using fake hardware instead")
+            import fakehardware as mycamera
+            from fakehardware import Color
+            CAMERA_TYPE = 'fakehardware'
 
 # Helper class to launch function after a long-press
 class LongPressDetector:
@@ -138,6 +152,9 @@ class UserInterface():
         selected_printer = config.selected_printer
 
         self.root = Tk()
+
+        ## If keyboard is present, pressing <Ctrl>+Q will quit the application
+        self.root.bind("<Control-q>", lambda event: self.root.destroy())
 
         ## Auto hide Mouse cursor
 
@@ -333,10 +350,17 @@ class UserInterface():
                 X_ = X_ + w + padding
 
         #Camera
-        self.camera = mycamera.PiCamera()
-        self.camera.annotate_text_size = 160 # Maximum size
-        self.camera.annotate_foreground = Color('white')
-        self.camera.annotate_background = Color('black')
+        if CAMERA_TYPE == 'picamera2':
+            self.camera = mycamera()
+            # Picamera2 does not have annotate_text_size, etc. Provide dummy attributes for compatibility
+            self.camera.annotate_text_size = 160
+            self.camera.annotate_foreground = Color('white')
+            self.camera.annotate_background = Color('black')
+        else:
+            self.camera = mycamera.PiCamera()
+            self.camera.annotate_text_size = 160 # Maximum size
+            self.camera.annotate_foreground = Color('white')
+            self.camera.annotate_background = Color('black')
 
         #Callback for long-press on screen
         def long_press_cb(time):
