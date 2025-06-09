@@ -23,6 +23,8 @@ from constants import *
 import time
 import traceback
 import re
+from libcamera import Transform
+import numpy as np
 
 def argsort(seq):
     #http://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python/3382369#3382369
@@ -52,7 +54,7 @@ except ImportError:
 import os
 import subprocess
 
-import oauth2services
+# import oauth2services
 
 try:
     import hardware_buttons as HWB
@@ -62,7 +64,7 @@ except ImportError:
     import fakehardware as HWB
 
 try:
-    from picamera2 import Picamera2
+    from picamera2 import Picamera2, Preview    
     mycamera = Picamera2
     class Color:
         # Dummy Color class for compatibility
@@ -152,6 +154,7 @@ class UserInterface():
         selected_printer = config.selected_printer
 
         self.root = Tk()
+        self.root.update_idletasks()
 
         ## If keyboard is present, pressing <Ctrl>+Q will quit the application
         self.root.bind("<Control-q>", lambda event: self.root.destroy())
@@ -224,11 +227,18 @@ class UserInterface():
             self.size=(640,480)
         self.root.geometry('%dx%d+0+0'%(self.size[0],self.size[1]))
 
+        # Canvas for camera preview
+        self.screen_w = self.root.winfo_screenwidth()
+        self.screen_h = self.root.winfo_screenheight()
+        self.canvas = Canvas(self.root, width=self.screen_w, height=self.screen_h, bg='black', highlightthickness=0)
+        self.canvas.pack(fill='both', expand=True)
 
         #Configure Image holder
-        self.image = ImageLabel(self.root, size=self.size)
-        self.image.place(x=0, y=0, relwidth = 1, relheight=1)
-        self.image.configure(background='black')
+        # self.image = ImageLabel(self.root, size=self.size)
+        self.image = ImageTk.PhotoImage(Image.new('RGB', (640, 480), color='black'))
+        self.canvas.create_image(0, 0, image=self.image, anchor='nw')
+        # self.image.place(x=0, y=0, relwidth = 1, relheight=1)
+        # self.image.configure(background='black')
 
 
         #Create sendprint button
@@ -293,13 +303,13 @@ class UserInterface():
         #Google credentials
 
         self.configdir = os.path.expanduser('./')
-        self.oauth2service = oauth2services.OAuthServices(
+        """self.oauth2service = oauth2services.OAuthServices(
             os.path.join(self.configdir, APP_ID_FILE),
             os.path.join(self.configdir, CREDENTIALS_STORE_FILE),
             self.account_email,
             enable_email = send_emails,
             enable_upload = upload_images,
-            log_level = self.log_level)
+            log_level = self.log_level)"""
 
         #Hardware buttons
         if hardware_buttons:
@@ -348,6 +358,7 @@ class UserInterface():
                 btn.place(x=X_,y=Y)
                 btn.configure(background = 'black')
                 X_ = X_ + w + padding
+
 
         #Camera
         if CAMERA_TYPE == 'picamera2':
@@ -398,11 +409,11 @@ class UserInterface():
         self.longpress_obj= LongPressDetector(self.root,long_press_cb)
 
     def __change_services(self,email,upload):
-        """Called whenever we should change the state of oauth2services"""
+        """Called whenever we should change the state of oauth2services
         self.oauth2service.enable_email = email
         self.oauth2service.enable_upload = upload
         self.send_emails = email
-        self.upload_images = upload
+        self.upload_images = upload"""
         #TODO show/hide button = oauth2services.OAuthServices(
         if email:
             self.mail_btn.configure(state=NORMAL)
@@ -428,8 +439,59 @@ class UserInterface():
         """Start the user interface and call Tk::mainloop()"""
         self.auth_after_id = self.root.after(100, self.refresh_auth)
         self.poll_after_id = self.root.after(self.poll_period, self.run_periodically)
+        self.start_camera()
         self.root.mainloop()
 
+    def start_camera(self):
+        camera_info = self.camera.sensor_resolution
+        if camera_info:
+            sensor_w, sensor_h = camera_info
+        else:
+            sensor_w, sensor_h = 1920, 1080  # fallback default
+        self.screen_w = self.root.winfo_screenwidth()
+        self.screen_h = self.root.winfo_screenheight()
+        W = self.screen_w
+        H = self.screen_h
+        R1 = sensor_w / sensor_h
+        R2 = W / H
+        PosX = 0
+        PosY = 0
+        if R1 > R2:
+            H = int(W / R1)
+            PosY = int((self.screen_h - H) / 2)
+        else:
+            W = int(H * R1)
+            PosX = int((self.screen_w - W) / 2)
+
+        # Canvas for camera preview
+        # self.canvas = Canvas(self.root, width=self.screen_w, height=self.screen_h, bg='black', highlightthickness=0)
+        # self.canvas.pack(fill='both', expand=True)
+        
+        self.preview_config = self.camera.create_preview_configuration(buffer_count=4, display="main", sensor={'output_size': (sensor_w, sensor_h)})
+        self.preview_config["raw"] = None
+        self.camera.align_configuration(self.preview_config)
+        self.camera.configure(self.preview_config)
+        self.camera.options["compress_level"] = 2
+        self.image = ImageTk.PhotoImage(Image.new('RGB', (W, H), color='black'))
+        self.canvas.create_image(0, 0, image=self.image, anchor='nw')
+        self.camera.start_preview(Preview.NULL, x=PosX, y=PosY, width=W, height=H, transform=Transform(hflip=1))
+        self.camera.start()
+        time.sleep(2)  # Allow camera to warm up
+        self.preview_running = True
+        self.preview_size = (W, H)
+        self.preview_position = (PosX, PosY)
+        self.fullres_size = (sensor_w, sensor_h)
+        self.update_preview()
+
+    def update_preview(self):
+        if not self.preview_running:
+            return
+        frame = self.camera.capture_array()
+        img = Image.fromarray(frame)
+        self.image = ImageTk.PhotoImage(img)
+        # self.canvas.create_image(0, 0, image=self.image, anchor='nw')
+        self.canvas.create_image(self.preview_position[0], self.preview_position[1], image=self.image, anchor='nw')
+        self.root.after(30, self.update_preview)
 
     def run_periodically(self):
         """hardware poll function launched by start_ui"""
@@ -487,8 +549,9 @@ class UserInterface():
                 except:
                     self.log.error("snap: Error setting effect to %s"%self.selected_image_effect)
             # 1. Start Preview
-            self.camera.resolution = snap_size
-            self.camera.start_preview()
+            # self.camera.resolution = snap_size
+            # self.camera.start_preview()
+            ui.start_camera()
             # 2. Show initial countdown
             # 3. Take snaps and combine them
             if mode == 'None':
@@ -898,7 +961,7 @@ class UserInterface():
                 self.mail_btn.configure(state=NORMAL)
             return
         # actual refresh
-        if self.oauth2service.refresh():
+        """if self.oauth2service.refresh():
             if self.send_emails:
                 self.mail_btn.configure(state=NORMAL)
             self.signed_in = True
@@ -906,7 +969,7 @@ class UserInterface():
             if self.send_emails:
                 self.mail_btn.configure(state=DISABLED)
             self.signed_in = False
-            self.log.error('refresh_auth: refresh failed')
+            self.log.error('refresh_auth: refresh failed')"""
 
         #relaunch periodically
         self.auth_after_id = self.root.after(OAUTH2_REFRESH_PERIOD, self.refresh_auth)
@@ -928,7 +991,7 @@ class UserInterface():
         if config.albumID == 'None':
             config.albumID = None
 
-        self.oauth2service.upload_picture(filen, config.albumID, title, caption)
+        # self.oauth2service.upload_picture(filen, config.albumID, title, caption)
 
 
     def send_email(self):
@@ -1016,7 +1079,7 @@ class UserInterface():
         if self.signed_in:
             self.log.debug("send_picture: sending picture by email")
             self.status("Sending Email")
-            try:
+            """try:
                 retcode = self.oauth2service.send_message(
                     email_address,
                     config.emailSubject,
@@ -1027,7 +1090,7 @@ class UserInterface():
                 self.status("Send failed :(")
                 retcode = False
             else:
-                self.status("")
+                self.status("")"""
         else:
             self.log.error('send_picture: Not signed in')
             retcode = False
