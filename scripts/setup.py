@@ -25,8 +25,8 @@ except ImportError:
     print("Cups not installed. removing option")
     printer_selection_enable = False
 
-VALID_ICON_FILE = os.path.join("ressources","ic_valid.png")
-INVALID_ICON_FILE = os.path.join("ressources","ic_invalid.png")
+VALID_ICON_FILE = os.path.join("resources","ic_valid.png")
+INVALID_ICON_FILE = os.path.join("resources","ic_invalid.png")
 from PIL import Image as _Image
 from PIL import ImageTk as _ImageTk
 from tkinter import *
@@ -83,6 +83,7 @@ class Assistant(Tk):
             def on_want_effects_change(*args):
                 self.config.enable_effects = self.want_effects_var.get() != 0
             self.want_effects_var.trace_add("write",on_want_effects_change)
+
             if self.printer_selection_enable == True:
                 self.want_print_var = IntVar()
                 self.want_print_var.set(config.enable_print == True)
@@ -113,7 +114,7 @@ class Assistant(Tk):
                             self.enable_print = False;
                             self.config.enable_print = False; #Fix printing enabled even on error
                             self.selected_printer = None;
-
+            
 
 
             if printer_selection_enable == True:self.want_print_var.trace_add("write",on_want_print_change)
@@ -131,23 +132,23 @@ class Assistant(Tk):
                 #value = self.want_printer_val.get(index)
                 print('You selected item %d: ' % (self.want_printer_val))
 
-
+            
             #checkbutton to choose to use soft keyboard
             self.use_soft_keyboard_var = IntVar()
             def on_use_soft_keyboard(*args):
                 self.USE_SOFT_KEYBOARD = self.use_soft_keyboard_var.get() != 0
             self.use_soft_keyboard_var.trace_add("write",on_use_soft_keyboard)
             self.use_soft_keyboard_var.set(0)
-
+            
             self.use_soft_keyboard_cb = Checkbutton(self.main_frame, text="Enable software keyboard (for this configuration)", variable=self.use_soft_keyboard_var, anchor=W, font='Helvetica')
-
+            
             self.page_titles.append("TouchSelfie - Options")
             if self.printer_selection_enable == True:
                 self.widgets.append([self.want_email_cb, self.want_upload_cb, self.want_effects_cb,self.want_print_cb,self.use_soft_keyboard_cb])
             else:
                 self.widgets.append([self.want_email_cb, self.want_upload_cb,self.want_effects_cb,self.use_soft_keyboard_cb])
 
-
+            
 
             # PAGE 1 google credentials
             self.user_mail_label = Label(self.main_frame,text="Google Account", font='Helvetica', anchor=W)
@@ -195,16 +196,16 @@ class Assistant(Tk):
 
             # Email Subject
             self.email_title_var = StringVar()
-            self.email_title_var.set(config.emailSubject)
+            self.email_title_var.set(config.email_subject)
             def on_mail_title_change(*args):
-                self.config.emailSubject = self.email_title_var.get()
+                self.config.email_subject = self.email_title_var.get()
             self.email_title_var.trace_add("write",on_mail_title_change)
 
             # Email Body
             self.email_body_var = StringVar()
-            self.email_body_var.set(config.emailMsg)
+            self.email_body_var.set(config.email_message)
             def on_mail_body_change(*args):
-                self.config.emailMsg = self.email_body_var.get()
+                self.config.email_message = self.email_body_var.get()
             self.email_body_var.trace_add("write",on_mail_body_change)
 
             # Create the widgets for the email configuration page
@@ -270,14 +271,14 @@ class Assistant(Tk):
                 album_id = self.album_id_var.get()
                 album_id = album_id.strip()
                 if album_id == "":
-                    self.config.albumID=None
+                    self.config.album_id=None
                 else:
                     #print("ERROR it's currently impossible to send photos to a specific album")
-                    self.config.albumID = self.album_id_var.get()
-                    #self.config.albumID = None # TODO: find a way to upload in a specific album
+                    self.config.album_id = self.album_id_var.get()
+                    #self.config.album_id = None # TODO: find a way to upload in a specific album
             self.album_id_var.trace_add("write",on_albumID_change)
             
-            self.album_id_var.set(config.albumID) #TODO: restore this eventually
+            self.album_id_var.set(config.album_id) #TODO: restore this eventually
             #self.album_id_var.set(None) # No Album
 
             self.album_id_label = Label(self.main_frame,text="Album ID", font='Helvetica', anchor=W)
@@ -431,11 +432,11 @@ class Assistant(Tk):
 
             #PAGE 4 Archive
             self.archive_var = IntVar()
-            if config.ARCHIVE: self.archive_var.set(1)
+            if config.archive: self.archive_var.set(1)
             else : self.archive_var.set(0)
 
             def on_archive_change(*args):
-                self.config.ARCHIVE = self.archive_var.get() != 0
+                self.config.archive = self.archive_var.get() != 0
             self.archive_var.trace_add("write",on_archive_change)
 
 
@@ -859,11 +860,11 @@ Click the Start button below:
         try:
             if test_email:
                 print(f"\nSending a test message to {username}")
-                self.google_service.send_message(username,self.config.emailSubject,self.config.emailMsg,attachment_file="test_image.png")
+                self.google_service.send_message(username,self.config.email_subject,self.config.email_message,attachment_file="test_image.png")
                 tkinter.messagebox.showinfo("Test Email", f"Test email sent successfully to {username}.")
             if test_upload:
-                print(f"\n 1 Testing picture upload in {username}'s album with id {self.config.albumID}:")
-                self.google_service.upload_picture("test_image.png", album_id = self.config.albumID)
+                print(f"\n 1 Testing picture upload in {username}'s album with id {self.config.album_id}:")
+                self.google_service.upload_picture("test_image.png", album_id = self.config.album_id)
                 tkinter.messagebox.showinfo("Test Upload", "Test image uploaded successfully.")
         except Exception as e:
             print(e)
@@ -1181,7 +1182,7 @@ if __name__ == '__main__':
     import logging
 
     logging.basicConfig (
-                         level=logging.DEBUG,  # Show all messages (DEBUG and above)
+                         level=logging.INFO,  # Show all messages (DEBUG and above)
                          format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                          filename='touchselfie.log',  # Log to this file
                          filemode='w'                 # Overwrite the log file each run
@@ -1211,5 +1212,4 @@ if __name__ == '__main__':
             import time
             time.sleep(2)
             print("\nError loading graphical assistant, default to console based\n")
-            console_assistant()
-
+            # console_assistant()
