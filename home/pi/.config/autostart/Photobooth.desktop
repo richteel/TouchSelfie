@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Photobooth
+Comment=Launch the TouchSelfie Photobooth Application
+Icon=/home/pi/TouchSelfie/photobooth.png
+Exec=sh /home/pi/TouchSelfie/start.sh
+Type=Application
+Terminal=true
+StartupNotify=false
+X-KeepTerminal=true

@@ -1,32 +1,22 @@
-# ignore specific files
-scripts/*.jpg
-scripts/*.log
-
 #ignore launcher
-photobooth.sh
-scripts/configuration.json
-scripts/client_id.json
-scripts/credentials.dat
-
-Photos/*.jpg
-Photos/*.gif
-
-# ignore log and animation frames
-run.log
-scripts/animframe*.*
+home/pi/TouchSelfie/scripts/*.json
+home/pi/TouchSelfie/scripts/*.dat
 
 # ignore compiled python files
-scripts/*.pyc
+home/pi/TouchSelfie/scripts/*.pyc
 
 # ignore emacs backupfiles
-scripts/*.py~
+home/pi/TouchSelfie/scripts/*.py~
 
-# ignore test image
-scripts/test_image.png
+# ignore log and animation frames
+home/pi/TouchSelfie/Logs/*.log
 
-# ignore thumnail generation
-scripts/ressources/effects/new_thumbs/
-scripts/ressources/effects/effects_snaps/
+# ignore all files in the Photos directory
+home/pi/TouchSelfie/Photos/*.png
+home/pi/TouchSelfie/Photos/*.jpg
+home/pi/TouchSelfie/Photos/*.gif
 
-# ignore sendmail log
-sendmail.log
+# ignore temp files
+home/pi/TouchSelfie/Temp/*.png
+home/pi/TouchSelfie/Temp/*.jpg
+home/pi/TouchSelfie/Temp/*.gif
